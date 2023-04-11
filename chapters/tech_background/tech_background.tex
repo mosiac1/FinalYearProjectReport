@@ -51,7 +51,7 @@ The \mintinline{java}{ugservice} is an asynchronous process that monitors an Act
     \label{fig:ranger_hive_details}
 \end{figure}
 
-\subsection{Plugins for Apache Ranger}
+\subsection{\label{sec:plugins_for_apache_ranger} Plugins for Apache Ranger}
 
 All services defined in Apache Ranger are treated as plugins, sharing a common interface independent of what the external Service is doing. A plugin has two components:
 
@@ -81,7 +81,7 @@ It is essential to make clear that the Ranger Security Admin Service uses the se
 
 \subsection{Plugins for External Services}
 
-All external services that use Apache Ranger for authorisation evaluation of policies are done on the application side, using libraries provided by Apache Ranger, not by the Security Admin Service. 
+For all external services that use Apache Ranger for authorisation\footnote{This report uses a mix of the British English "to authorise" and the American English "to authorize". We use the British English form in normal writing and the American English form for component and class names. This is done to comply with OpenMetadata and Apache Ranger coding standards.}, evaluation of policies is done on the application side, using libraries provided by Apache Ranger, not on the Security Admin Service side.
 
 The implementation of plugins for external services usually is comprised of the implementation of the authorisation interfaces provided by the service (e.g., \mintinline{java}{HiveAuthorizerFactory} and \mintinline{java}{AbstractHiveAuthorizer} for Hive) and adjacent utility classes. These implementations are not used directly but rather through shim classes. A shim is a library that intercepts API calls, altering their functionality, usually used to support compatibility between versions and to run programs in non-native environments \cite{shimsNewton2011}. In this case, shims handle compatibility between Apache Ranger libraries, which are compiled for Java 8 and have dependencies on deprecated JavaEE libraries, and the external service's libraries so all can run as part of the same Java program.
 
@@ -121,7 +121,7 @@ mvn clean compile package install -DskipTests -DskipJSTests
 
 \end{enumerate}
 
-Let \mintinline{java}{<module>} represent the module with source code changes that need to be integrated into the Docker Compose harness. Listing \ref{fig:ranger_hive_details} provides the source code for a bash script that implements the procedure to update the running Security Admin Service with new changes. Lines 3 and 4 handle building the module classes and the Security Admin Service artefact, respectively. Lines 8 to 10 handle building a new Docker image based on the new build artefact, removing the old container and recreating it with the new image. 
+Let \mintinline{java}{<module>} represent the module with source code changes that need to be integrated into the Docker Compose harness. Listing \ref{listing:ranger_module_reload_bash} provides the source code for a bash script that implements the procedure to update the running Security Admin Service with new changes. Lines 3 and 4 handle building the module classes and the Security Admin Service artefact, respectively. Lines 8 to 10 handle building a new Docker image based on the new build artefact, removing the old container and recreating it with the new image. 
 
 \begin{listing}
 \centering
@@ -230,4 +230,4 @@ These deficiencies motivate integrating OpenMetadata with Apache Ranger, as the 
 
 \subsection{Conclusion}
 
-This chapter has laid out the groundwork needed for the next chapter, which proposes a system design and an implementation. Further, it motivates issues with the current approach and why the solutions are required. Section \ref{sec:tech_background_apache_ranger} aims to stand alone as an introduction to the inner workings of Apache Ranger. At the same time, the following chapters provide a practical example of using Apache Ranger libraries to handle authorization for other services.
+This chapter has laid out the groundwork needed for the next chapter, which proposes a system design and an implementation. Further, it motivates issues with the current approach and why the solutions are required. Section \ref{sec:tech_background_apache_ranger} aims to stand alone as an introduction to the inner workings of Apache Ranger. At the same time, the following chapters provide a practical example of using Apache Ranger libraries to handle authorisation for other services.
