@@ -124,8 +124,11 @@ mvn clean compile package install -DskipTests -DskipJSTests
 Let \mintinline{java}{<module>} represent the module with source code changes that need to be integrated into the Docker Compose harness. Listing \ref{listing:ranger_module_reload_bash} provides the source code for a bash script that implements the procedure to update the running Security Admin Service with new changes. Lines 3 and 4 handle building the module classes and the Security Admin Service artefact, respectively. Lines 8 to 10 handle building a new Docker image based on the new build artefact, removing the old container and recreating it with the new image. 
 
 \begin{listing}
-\centering
-\begin{minted}[breaklines,linenos]{bash}
+\begin{minted}[breaklines,
+    linenos,
+    fontsize=\footnotesize,
+    frame=single,
+]{bash}
 !#/bin/bash
 set -x
 mvn clean compile package install -DskipTests -DskipJSTests -Dpmd.skip -pl :<module>
