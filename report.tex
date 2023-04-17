@@ -25,8 +25,8 @@
 \usepackage{chngcntr}
 \counterwithin{listing}{chapter}
 
-\usepackage[acronym]{glossaries}
 \usepackage[utf8]{inputenc}
+\usepackage{glossaries}
 
 %% Use BibLatex
 \usepackage[
@@ -102,15 +102,14 @@ defernumbers=true
     \afterpreface
     
     % Add Glossary
-    \printglossary[type=\acronymtype]
     \printglossary
-    \newpage
     
     %% These include the actual text
     \include{chapters/intro/intro}
     \include{chapters/tech_background/tech_background}
     \include{chapters/design/design}
     \include{chapters/implementation/implementation}
+    \include{chapters/evaluation/evaluation}
 
     %% Print bib 
     \printbibheading
