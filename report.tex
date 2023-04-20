@@ -28,6 +28,8 @@
 \usepackage[utf8]{inputenc}
 \usepackage{glossaries}
 
+\usepackage{csquotes}
+
 %% Use BibLatex
 \usepackage[
 backend=biber,
@@ -69,14 +71,14 @@ defernumbers=true
 \input{glossary/glossary}
 
 \begin{document}
-    % Uncomment the following lines to leave out list of figures, tables
+    % Uncomment the following lines to leave out the list of figures, tables
     % and copyright until final printing
     %\figurespagefalse
-    %\tablespagefalse
+    \tablespagefalse
     %\copyrightfalse
     
     %% This defines the title (the \\ forces a line break)
-    \title{Big Data for humans - metadata authorization with respect to the privacy and user information}
+    \title{Big Data for humans - metadata authorisation with respect to privacy and user information}
     %% and author
     \author{Marius Cristian Osiac}
     \stuid{1464967}
@@ -110,6 +112,7 @@ defernumbers=true
     \include{chapters/design/design}
     \include{chapters/implementation/implementation}
     \include{chapters/evaluation/evaluation}
+    \include{chapters/conclusion/conclusion}
 
     %% Print bib 
     \printbibheading

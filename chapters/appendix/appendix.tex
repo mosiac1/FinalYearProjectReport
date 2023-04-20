@@ -1,10 +1,82 @@
-\chapter{Apache Ranger service definition for OpenMetadata services}
-\label{cha:servicedef_full} 
+\chapter[Screenshots of experiments]{Screenshots of OpenMetadata and Apache Ranger exemplifying experiments}
+\label{cha:exp_appendix} 
 
-% \inputminted[frame=single,
-%    linenos=true,
-%    breaklines,
-%    breakafter=.,
-%    fontsize=\footnotesize]
-% {json}
-% {chapters/appendix/files/ranger-servicedef-openmetadata.json}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/1/tables.pdf}
+    \caption{The listing of tables in the \mintinline{text}{sample_data.ecommerce_db.shopify} database schema, viewed by the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} or \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-admin} roles.}
+    \label{fig:exp_1_talbes}
+\end{figure}
+
+\begin{figure}
+    \centering
+
+    \subfloat[\label{fig:exp_1_alice_table} The \mintinline{text}{sample_data.ecommerce_db.shopify."dim.api/client"} table viewed by Alice]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/1/alice_table.pdf} }
+
+    \subfloat[\label{fig:exp_1_bob_table} The \mintinline{text}{sample_data.ecommerce_db.shopify."dim.api/client"} table viewed by Bob]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/1/bob_table.pdf} }
+
+    \caption{The \mintinline{text}{sample_data.ecommerce_db.shopify."dim.api/client"} table viewed by the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} and \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-admin} roles.}
+    \label{fig:exp_1_table_alice_bob}
+    
+\end{figure}
+
+% Experiment 2
+
+\begin{figure}
+    
+    \subfloat[Resource specification of Apache Ranger policy.]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/2/ranger_poli_1.pdf} }
+    
+    \subfloat[Allowed and denied permissions of Apache Ranger policy.]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/2/ranger_poli_2.pdf} }
+    
+    \caption{Definition of Apache Ranger policy for table \mintinline[breaklines, breakbefore=./_]{java}{sample_data.ecommerce_db.shopify."dim.api/client"}, allowing access for the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role and denying access for the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-admin} role.}
+    \label{fig:exp_2_ranger_poli}
+    
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/2/alice_table.pdf}
+    \caption{The \mintinline[breaklines, breakbefore=./]{java}{sample_data.ecommerce_db.shopify."dim.api/client"} table viewed with access denied.}
+    \label{fig:exp_2_alice_table}
+\end{figure}
+
+% Experiment 3
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/3/kafka_ranger.pdf}
+    \caption{Definition of Apache Ranger policy for topics, excluding the ones containing the words \mintinline{java}{customer} or \mintinline{java}{address}, in the \mintinline{java}{sample_kafka} messaging service, allowing view access for the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role.}
+    \label{fig:exp_3_ranger}
+\end{figure}
+
+\begin{figure}
+    \centering
+
+    \subfloat[ \label{fig:exp_3_kafka_alice} Listing of topics viewed by Alice. ]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/3/kafka_alice.pdf} }
+
+    \subfloat[ \label{fig:exp_3_kafka_bob} Listing of topics viewed by Bob. ]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/3/kafka_bob.pdf} }
+    
+    \caption{Listing of topics in the \mintinline{java}{sample_kafka} messaging service viewed by the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} and \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-admin} roles.}
+    \label{fig:exp_3_kafka}
+\end{figure}
+
+% Experiment 4
+
+
+\begin{figure}
+    \centering
+
+    \subfloat[ \label{fig:exp_4_glos_1} Glossary term \mintinline{java}{t_glossary_1_1_1} viewed by Bob ]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/4/bob_g_term_1_1_1.pdf} }
+
+    \subfloat[ \label{fig:exp_4_glos_2} Glossary term \mintinline{java}{t_glossary_2_1} viewed by Bob ]{ \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/4/bob_g_term_2_1.pdf} }
+    
+    \caption{Glossary items from the glossary \mintinline{java}{t_glossary} viewed by the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role.}
+    \label{fig:exp_4_glos}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{chapters/appendix/figures/exp/4/ranger_poli.pdf}
+    \caption{Definition of Apache Ranger policy for recursive glossary items, allowing view, edit and create access for the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role.}
+    \label{fig:exp_4_ranger}
+\end{figure}

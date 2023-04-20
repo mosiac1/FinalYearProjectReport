@@ -1,8 +1,8 @@
-\chapter{Implementation}
+\chapter{\label{cha:impl} Implementation}
 
 This chapter covers the detailed implementation of all components needed for integrating Apache Ranger as an access control system for OpenMetadata. We also present engineering problems that arose during the implementation process and their solutions.
 
-\section{Relocating the OpenMetadata Authorizer interface and related classes}
+\section[Relocating OpenMetadata classes]{Relocating the OpenMetadata Authorizer interface and related classes}
 
 We begin by investigating the current Authorizer interface used by OpenMetadata, shown in Listing \ref{listing:original_authorizer}. The functions \mintinline{java}{listPermissions} and \mintinline{java}{getPermission} are used to query the operations a user is allowed to apply on all resource types, all resources under a specific resource type or a fully-qualified resource. The \mintinline{java}{authorize} function handles access control decisions, yielding successfully when access is authorised and throwing an \mintinline{java}{AuthorizerException} when it is not. The \mintinline{java}{authorizeAdmin} directive verifies that a user is an administrator of the system, throwing an exception otherwise. The final procedure, \mintinline{java}{decryptSecret}, is the process of being deprecated. 
 
@@ -44,23 +44,7 @@ public interface Authorizer {
 
 \subsection{Initialisation}
 
-The \mintinline{java}{OpenMetadataApplicationConfig} and \mintinline{java}{Jdbi} classes are part of the \mintinline[breaklines, breakafter=.:]{java}{org.open-metadata:openmetadata-serivce} module can not be used in the authorisation interface.
-
-OpenMetadata handles the initialisation of resources in the \mintinline{java}{OpenMetadataApplication} class. The authoriser instance is created based on the \mintinline{text}{authorizerConfiguration.className} property provided by the application configuration. The following expression handles class loading and instance creation, the configuration properties being passed later to the \mintinline{java}{init} function.
-
-\begin{minted}[breaklines, breakbefore=.]{java}
-    this.authorizer = Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
-\end{minted}
-
-The initialisation sequence is updated to use the class constructor that takes a single argument, an instance of \mintinline{java}{AuthorizerConfiguration}, and the \mintinline{java}{init} function is modified to take no arguments.
-
-\begin{minted}[breaklines, breakbefore=.]{java}
-    this.authorizer = Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor(AuthorizerConfiguration.class).newInstance(authorizerConf);
-\end{minted}
-
-The provided authoriser implementations, \mintinline{java}{DefaultAuthorizer} and \mintinline{java}{NoopAuthorizer}, are updated to follow the revised structure. Listing \ref{listing:new_authorizer} provides the final layout of the authorisation interface that the Apache Ranger authoriser will implement.
-
-\begin{listing}
+\begin{listing}[htb!]
 
 \begin{minted}[breaklines,
     linenos,
@@ -94,7 +78,23 @@ public interface Authorizer {
 
 \end{listing}
 
-\section{Using Apache Ranger libraries for authorisation}
+The \mintinline{java}{OpenMetadataApplicationConfig} and \mintinline{java}{Jdbi} classes are part of the \mintinline[breaklines, breakafter=.:]{java}{org.open-metadata:openmetadata-serivce} module can not be used in the authorisation interface.
+
+OpenMetadata handles the initialisation of resources in the \mintinline{java}{OpenMetadataApplication} class. The authoriser instance is created based on the \mintinline{text}{authorizerConfiguration.className} property provided by the application configuration. The following expression handles class loading and instance creation, the configuration properties being passed later to the \mintinline{java}{init} function.
+
+\begin{minted}[breaklines, breakbefore=.]{java}
+    this.authorizer = Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
+\end{minted}
+
+The initialisation sequence is updated to use the class constructor that takes a single argument, an instance of \mintinline{java}{AuthorizerConfiguration}, and the \mintinline{java}{init} function is modified to take no arguments.
+
+\begin{minted}[breaklines, breakbefore=.]{java}
+    this.authorizer = Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor(AuthorizerConfiguration.class).newInstance(authorizerConf);
+\end{minted}
+
+The provided authoriser implementations, \mintinline{java}{DefaultAuthorizer} and \mintinline{java}{NoopAuthorizer}, are updated to follow the revised structure. Listing \ref{listing:new_authorizer} provides the final layout of the authorisation interface that the Apache Ranger authoriser will implement.
+
+\section{\label{sec:using_apache_ranger_for_authorisation} Using Apache Ranger libraries for authorisation}
 
 This section details the initialisation and utilisation of Apache Ranger libraries for access control policy evaluation through the \mintinline{java}{RangerBasePlugin} class. It also touches on using the Hadoop user group information utility to retrieve users' group membership data for a centralised Active Directory database.
 
@@ -106,25 +106,7 @@ Apache Ranger's configuration loading utility expects properties to be provided 
 
 \section{\label{sec:utilising_the_ranger_plugin} Utilising the Ranger Plugin}
 
-The Ranger plugin evaluates access requests using the function \mintinline{java}{isAccessAllowed}, which takes a single argument, an instance of the \mintinline{java}{RangerAccessRequest} class which wraps identification of the user requesting access (consisting of the user's unique name and the groups and roles it is a member of), a description of the resource being accessed, and the operation applied to the resource. 
-
-User identification is handled by the mintinline{java}{RangerHadoopUserGroupsRolesProvider} class. Resolving the need data begins with the \mintinline{java}{SecurityContextInterface}, which supplies the user's name. The Ranger Authorizer uses the Hadoop User Group Information utility to get the user's groups.
-
-\begin{minted}[breaklines, breakbefore=.]{java}
-Set<String> groups = UserGroupInformation.createRemoteUser(internalName).getGroupNames();
-\end{minted}
-
-The Ranger Plugin is then used to retrieve the appropriate roles based on the user's name and the groups.
-
-\begin{minted}[breaklines, breakbefore=.]{java}
-Set<String> roles = rangerPlugin.getRolesFromUserAndGroups(user, groups);
-\end{minted}
-
-The Ranger Plugin handles references to resources as a mapping between string keys, representing the resource type, and generic objects, representing the value of the resource type, through the \mintinline{java}{RangerAccessResourceImpl} class. The generic objects used for resource values are commonly strings or collections of strings. The \mintinline{java}{RangerOpenmetadataAccessResource} class extends \mintinline{java}{RangerAccessResourceImpl}, implementing the mapping of OpenMetadata entities to key-values pairs recognised by the Ranger Plugin. The class handles setting values for entities with parents by reflectively invoking methods that take certain entity types as arguments, as depicted in Listing \ref{listing:ranger_openmetadta_access_resource}.
-
-Since these are recursive types, Tag and Glossary Term entities require specialised resource-value mapping. A Tag object does not provide a reference to its Tag Category or parent Tag; thus, we build the resource path of a Tag from its fully quantified name. OpenMetadata defines a language for the fully qualified names of entities, a dot-separated list of strings which may be in quotes if containing special characters, using ANTLR; fully qualified names are split into their components by parsers generated by ANTLR. The Tag Category and ancestor Tags of a Tag entity can thus be derived from the elements of its fully qualified name. A Glossary Term entity contains references to its Glossary and parent Term, but to retrieve the parent of the parent Glossary Term a database read is required; we avoid this inefficiency but adopting the same approach as with Tag entities. For both Tags and Terms, the ancestors' names are joined with the forward-slash symbol (/) to create path-like strings recognised by the Ranger Plugin.
-
-\begin{listing}
+\begin{listing}[htb!]
 
 \begin{minted}[breaklines,
     linenos,
@@ -170,6 +152,24 @@ public class RangerOpenmetadataAccessResource extends RangerAccessResourceImpl {
 
 \end{listing}
 
+The Ranger plugin evaluates access requests using the function \mintinline{java}{isAccessAllowed}, which takes a single argument, an instance of the \mintinline{java}{RangerAccessRequest} class which wraps identification of the user requesting access (consisting of the user's unique name and the groups and roles it is a member of), a description of the resource being accessed, and the operation applied to the resource. 
+
+User identification is handled by the mintinline{java}{RangerHadoopUserGroupsRolesProvider} class. Resolving the need data begins with the \mintinline{java}{SecurityContextInterface}, which supplies the user's name. The Ranger Authorizer uses the Hadoop User Group Information utility to get the user's groups.
+
+\begin{minted}[breaklines, breakbefore=.]{java}
+Set<String> groups = UserGroupInformation.createRemoteUser(internalName).getGroupNames();
+\end{minted}
+
+The Ranger Plugin is then used to retrieve the appropriate roles based on the user's name and the groups.
+
+\begin{minted}[breaklines, breakbefore=.]{java}
+Set<String> roles = rangerPlugin.getRolesFromUserAndGroups(user, groups);
+\end{minted}
+
+The Ranger Plugin handles references to resources as a mapping between string keys, representing the resource type, and generic objects, representing the value of the resource type, through the \mintinline{java}{RangerAccessResourceImpl} class. The generic objects used for resource values are commonly strings or collections of strings. The \mintinline{java}{RangerOpenmetadataAccessResource} class extends \mintinline{java}{RangerAccessResourceImpl}, implementing the mapping of OpenMetadata entities to key-values pairs recognised by the Ranger Plugin. The class handles setting values for entities with parents by reflectively invoking methods that take certain entity types as arguments, as depicted in Listing \ref{listing:ranger_openmetadta_access_resource}.
+
+Since these are recursive types, Tag and Glossary Term entities require specialised resource-value mapping. A Tag object does not provide a reference to its Tag Category or parent Tag; thus, we build the resource path of a Tag from its fully quantified name. OpenMetadata defines a language for the fully qualified names of entities, a dot-separated list of strings which may be in quotes if containing special characters, using ANTLR; fully qualified names are split into their components by parsers generated by ANTLR. The Tag Category and ancestor Tags of a Tag entity can thus be derived from the elements of its fully qualified name. A Glossary Term entity contains references to its Glossary and parent Term, but to retrieve the parent of the parent Glossary Term a database read is required; we avoid this inefficiency but adopting the same approach as with Tag entities. For both Tags and Terms, the ancestors' names are joined with the forward-slash symbol (/) to create path-like strings recognised by the Ranger Plugin.
+
 The access type is passed to the Ranger Plugin as a string, retrieved from the \mintinline[breaklines, breakbefore=CI]{java}{OperationContextInterface}. As this interface provides a list of operations, each is checked independently.
 
 Listing \ref{listing:ranger_authorizer_impl_authorize} supplies the body of the \mintinline{java}{authorise} function provided by the Ranger Authorizer implementation of the OpenMetadata \mintinline{java}{Authorizer} interface. The procedure uses the \mintinline{java}{RangerOpenmetadataAccessRequest} class, which extends the provided request class \mintinline[breaklines, breakbefore=ARI]{java}{RangerAccessRequestImpl}, adding convenience constructors. The \mintinline{java}{isAccessAllowed} procedure of the Ranger Plugin returns a \mintinline{java}{RangerAccessResult} object, which contains the final allowed or denied decision along with meta information of the policy evaluations.
@@ -205,13 +205,15 @@ public void authorise (
 
 \subsection{Listing user permissions for resources}
 
-The Ranger Plugin enables queries of access control rules (commonly abbreviated to ACLs) with the procedure \mintinline{java}{getResourceACLs}, which accepts a single argument, a \mintinline[breaklines, breakbefore=AR]{java}{RangerAccessRequest} object. Creating an access request is the same as detailed above. An additional case appears when querying permissions for all resources of a type, which is handled by mapping, in the \mintinline{java}{RangerAccessResourceImpl}, the resource type and its ancestor to wildcards (the asterisk symbol).
+The Ranger Plugin enables queries of \acrfull{acl} with the procedure \mintinline{java}{getResourceACLs}, which accepts a single argument, a \mintinline[breaklines, breakbefore=AR]{java}{RangerAccessRequest} object. Creating an access request is the same as detailed above. An additional case appears when querying permissions for all resources of a type, which is handled by mapping, in the \mintinline{java}{RangerAccessResourceImpl}, the resource type and its ancestor to wildcards (the asterisk symbol).
+
+\acrlong{acl} are a mechanism that implements access control for a system resource by enumerating the system entities that are permitted to access the resource and stating, either implicitly or explicitly, the access modes granted to each entity \cite{RFC4949}.
 
 The \mintinline{java}{getResourceACLs} function returns a \mintinline{java}{RangerResourceACLs} object containing three maps of the type \mintinline{java}{Map<String, Map<String, AccessResult>>}, one for each of user, group and role access control rules. Keys of the outer map represent the name of a user, group or role, respectively, while keys of the inner map represent access type, and values of the inner map represent an access result, which can be allowed, denied or undetermined. This response is not aggregated, as it will contain results for all users, groups and roles present in policies that match the resource queried and outcomes for all access types, not only those applicable to the resource type used in the request. Results are consolidated by the \mintinline{java}{RangerPermissionsProvider} class, filtering groups and roles the user is not part of and access types which do not correspond to the resource type in question, and combines the remaining results. An access type is considered permitted if any of the user's groups for roles allow it or if the user is specifically allowed that access type.
 
 \section{Additional changes to OpenMetadata}
 
-This section details changes to OpenMetadata's metadata service and user interface to empower better compatibility with the Ranger authoriser's more precise access control mechanism. When considering these changes, supporting complete backward compatibility and maintaining the same behaviour for the included authoriser is critical.
+This section details changes to OpenMetadata's metadata service and user interface to empower better compatibility with the Ranger authoriser's more precise access control mechanism. Supporting complete backward compatibility and maintaining the same behaviour for the included authoriser is critical when considering these changes.
 
 \subsection{Listing of entities}
 
@@ -219,13 +221,13 @@ OpenMetadata's included authorisation system does not distinguish between entiti
 
 The listing of entities paginates results, returning two pointers to the start and end of the list of results, which can be used by future requests to fetch the next or previous page of entities. As the access control evaluation is done inside the metadata service, it cannot be known if the user is allowed to view a resource before fetching it from the database; at the same time, it is ideal for reducing the number of entities unnecessarily retrieved from storage. The solution proposed fetches singular entities, checks access permission for the user on that resource and adds it to the page or discards it accordingly until the page is filled. This approach avoids the issue of retrieving too many entities so that the page is completed before all can be evaluated, thus wasting resources; it is a trade-off between the cost of a round-trip to the database and the cost of transporting and deserialising more data. 
 
-\subsection{Masking results on the Search page}
+\subsection{\label{sec:masking_results_from_search} Masking results on the Search page}
 
 OpenMetadata maintains a copy of the metadata in Elasticsearch, which is used for fast searches, input autocompletion and aggregations. Searching through entities is available with two API endpoints  \mintinline{text}{/api/v1/search/query} and \mintinline{text}{/api/v1/search/suggest}. These endpoints only enable the reading of some metadata entities but bypass the access control mechanisms; thus, metadata that the user is not privileged to view can appear in the search results. This is a known security issue of the platform, with plans to fix it in future versions. It is also a complex issue to resolve since the access control system may add too much overhead to the search functionality, diminishing one of its main primary purposes, fast resource lookup; additionally, since filtering of results from the search engine needs to be done by the metadata service, the values of total results, hit scoring and aggregations would be skewed. For these reasons, the issue of access control mechanism for search results in OpenMetadata is beyond the scope of this report.
 
 We provide a mechanism for signalling to the users using the Search page in OpenMetadata's user interface that they are not privileged to view some of the entities presented. Recall Figure \ref{fig:openmetadata_sample_data_explore}, showing the Search page and the right-hand side panel, which appears when the user clicks on one of the search results. If the user is not allowed to view the entity (table in this case), the panel will not show any data, instead displaying a suitable message, as illustrated in Figure \ref{fig:openmetadata_sample_data_explore_denied}. The feature is implemented as part of the UI, calling the \mintinline{java}{/api/v1/permissions/{resource}/{id}} API endpoint to list the permissions of the current user on the given resource.
 
-It is essential to highlight that this change does not improve the system's security, as data is still available programmatically - it is only an improvement to the user experience.
+It is essential to highlight that this change does not improve the system's security, as data is still available programmatically - it only enhances the user experience.
 
 \begin{figure}
     \centering
@@ -234,11 +236,15 @@ It is essential to highlight that this change does not improve the system's secu
     \label{fig:openmetadata_sample_data_explore_denied}
 \end{figure}
 
-% \subsection{Build artefacts}
+\section{Unit Testing}
 
-% The build artefacts generated by the OpenMetadata project are a tarball and an RPM file. All compiled Java classes and their dependencies are added to the \mintinline{text}{libs} folder so these can be loaded into the classpath of the Java process. The Ranger authoriser handles loading its classes and dependencies using the shim class.
+Unit tests exercise a "unit" (or component) of code in an isolated environment and compare results with expected behaviours \cite{unitTestingOlan2003}. They are crucial to the software development lifecycle and increase the developer's confidence in the final product.
 
-\section{Changes to Apache Ranger}
+The Ranger authoriser implementation for OpenMetadata includes unit tests that cover approximately $80\%$ (by lines of code) of the most relevant classes, consisting of mapping OpenMetadata entities to Apache Ranger resource, fetching of user groups and roles and aggregation of permissions from Apache Ranger access control rules. While test coverage only weekly correlates to the number of defects \cite{testCoverageAntinyan2018}, it can be argued that, for a codebase of this small size, the metric does serve to increase confidence in the isolated functionality of each component being correct. Manual system tests, peer reviews and user validation, covered in the following sections, validate that individual components interoperate as expected.
+
+Unit tests are implemented using the JUnit \cite{junitTech} testing framework and the Mockito \cite{mockitoTech} library to create observable and controllable stand-ins for class instances. Test parameterisation - repeating test procedures with different parameters - is extensively used to validate that the Ranger authoriser implementation handles all OpenMetadata entity types and access types correctly.
+
+\section{\label{sec:changes_to_apache_ranger} Changes to Apache Ranger}
 
 Additions to the Apache Ranger source code consist of the OpenMetadata service implementation used by the service type definition, as described in Section \ref{sec:plugins_for_apache_ranger}. We define the \mintinline{java}{RangerServiceOpenmetadata} class, extending the \mintinline{java}{RangerBaseService} base class, which handles the verification of configurations of OpenMetadata services defined in Apache Ranger and the generation of initial policies.
 
@@ -249,16 +255,20 @@ The configurations passed to the \mintinline{java}{RangerServiceOpenmetadata} cl
 \subsection{Generating default policies}
 
 Creating default policies is essential to giving the admin a good user experience and programmatically doing much of the repetitive work of setting up initial policies.
-It is important to note here that Ranger uses the "Fail-safe defaults" principal \cite{protectionOfInformationInComputerSystemsSaltzer1975} - access is only permitted if it is deliberately granted - meaning a newly set up service instance will block all access. Apache Ranger also follows the principle of "Least privilege" \cite{protectionOfInformationInComputerSystemsSaltzer1975}, but the system does not enforce this; instead, it is the responsibility of the policy administrator. There is an exception to this - the creation of the default policies, where the system is, at the time a new service instance is created, the policy maker. The admin has the full power to delete or completely change default policies, but these should strive to set a good example.
+It is important to note here that Ranger uses the "Fail-safe defaults" principal \cite{protectionOfInformationInComputerSystemsSaltzer1975} - access is only permitted if it is deliberately granted - meaning a newly set up service instance will block all access. Apache Ranger also follows the principle of "Least privilege" \cite{protectionOfInformationInComputerSystemsSaltzer1975}, but the system does not enforce this; instead, it is the responsibility of the policy administrator. An exception is when new service instances are created and populated with default policies, thus these should strive to create a good starting point for administrators.
 
 The default mechanism in Apache Ranger for generating policies, implemented by the \mintinline{java}{RangerBaseService.getDefaultRangerPolicies} function, creates a policy for every resource, each with a single rule, allowing all accesses for the group \mintinline{text}{public}. It should be noted that this is configurable, using the \mintinline[breaklines, breakafter=.]{python}{Ranger.default.policy.groups} configuration key for the Ranger Admin Service application and the \mintinline[breaklines, breakafter=.]{python}{default.policy.groups} configuration key for the service instance configuration, but this behaviour is undocumented. Thus, in most practical cases, default policies enable all access for all users.
 
 The OpenMetadata plugin overrides the functionality provided by \mintinline[breaklines, breakbefore=BS]{java}{RangerBaseService} class, following two principles: apply fail-safe defaults, so all access is blocked when the service is created, and give the admins an easy way of privileging users in bulk. Apache Ranger's roles system is employed to facilitate the latter.
 
-To produce the default policies for every resource defined in the service definition, four policies, each assigned to one group:
+For each resource type in the service definition a policy is created, matching every resource of that type, with four access control rules corresponding to the following roles:
 \begin{itemize}
     \item \textbf{Data-consumer} - allowed any View operation. This is the most common type of user, which can only view resources and not change them;
     \item \textbf{Data-steward} - allowed any View operation and allowed to edit descriptions, names, owners, tags and lineage. These users are the maintainers of the metadata;
     \item \textbf{Bot} - allowed any operation except to create or delete bots or webhooks. Bots are used for automatic operations or service-to-service communication;
     \item \textbf{Admin} - allowed any operation.
 \end{itemize}
+
+\section{Conclusion}
+
+This chapter has demonstrated the steps taken to implement the integration of OpenMetadata with Apache Ranger, thus creating a robust, precise and extendible access control system. It discusses technical and design decisions made during the development process. Smaller parts of the implementation and internal functionality of the classes making up the Ranger authoriser are not presented here for brevity as there available in the source code. The next chapter will be looking at evaluating the quality and performance of the built system. 

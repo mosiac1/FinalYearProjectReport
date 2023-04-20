@@ -1,6 +1,6 @@
 \chapter{\label{cha:context} Technical Background}
 
-This chapter thoroughly discusses the two central systems the project is concerned with: Apache Ranger and OpenMetadat. It will also briefly cover related items, such as building a local debugging harness, Java practices for developing large, distributed and extensible frameworks and dependency management. As mentioned in Section \ref{sec:project_goal}, this chapter aims to present itself as an introduction to the inner working of Apache Ranger and methodologies for expanding its suite of interoperable services.  
+This chapter thoroughly discusses the two central systems the project is concerned with: OpenMetadata and Apache Ranger. It will also briefly cover related items, such as building a local debugging harness, Java practices for developing large, distributed and extensible frameworks and dependency management. As mentioned in Section \ref{sec:project_goal}, this chapter aims to present itself as an introduction to the inner working of Apache Ranger and methodologies for expanding its suite of interoperable services.  
 
 \section{OpenMetadata}
 
@@ -232,6 +232,6 @@ docker-compose -f docker-compose.ranger.yml -f docker-compose.ranger-postgres.ym
 \end{listing}
 
 
-\subsection{Conclusion}
+\section{Conclusion}
 
 This chapter has laid out the groundwork needed for the next chapter, which proposes a system design and an implementation. Further, it motivates issues with the current approach and why the solutions are required. Section \ref{sec:tech_background_apache_ranger} aims to stand alone as an introduction to the inner workings of Apache Ranger. At the same time, the following chapters provide a practical example of using Apache Ranger libraries to handle authorisation for other services.

@@ -1,13 +1,13 @@
 \chapter{Introduction}
 \label{cha:intro}
 
+This report explores the various challenges and solutions related to metadata authorisation and discusses the technical challenges of implementing a robust metadata authorisation system based on industry-standard technologies: OpenMetadata and Apache Ranger.
+
 In the last few decades, the explosion of digital technology has led to an increasing amount of data being collected and generated. The rise of big data has led to many opportunities and challenges for organisations and individuals alike. However, with this abundance of data comes the risk of privacy infringement and the abuse of user information. Metadata has become a critical component in securing individuals' privacy and user information.
 
 Metadata can provide valuable insights into the structure of data and how it is used, but it can also be used to track, identify and monitor individuals without their consent. As such, it is crucial to ensure that system administrators have control over all information about the data their organisation stores and how it is used. This is where metadata authorisation comes into play.
 
 Metadata authorisation is the process of granting or denying access to metadata. It is crucial for any organisation that collects user data to have a robust metadata authorisation system that enables the protection of the privacy and personally-identifying information of individuals while still allowing for the most effective use of data and metadata. Metadata authorisation is crucial in industries such as healthcare, finance, and marketing, where sensitive personal information is frequently collected.
-
-This report explores the various challenges and solutions related to metadata authorisation and discusses the technical challenges of implementing a robust metadata authorisation system on top of industry-standard technologies.
 
  \section{Background}
 
@@ -42,21 +42,6 @@ Gathering insights from data is finally a human process, and our goal as enginee
 
 Metadata, data catalogues and data indexing systems are essential tools for data-driven organisations to maintain, govern and use data in the most efficient manner possible by allowing data analysts, data scientists, domain experts and administrators to understand the sprawling \glspl{data_mesh} they are working with. Big Data systems have largely evolved without adjacent metadata management infrastructure, which can, in part, be seen as a good thing, empowering data interoperability and loosening constraints. However, as these systems mature, more advanced and complete solutions are needed to handle "Big Metadata" \cite{bigMetadataSmith2014}. As metadata and data discovery tools evolve, the need to consider the aspects of security, privacy and data access control is becoming more relevant.
 
-\section{Technologies Used}
-
-OpenMetadata is an open-source platform for metadata management that aims to help data-driven organisations govern their data and metadata in a flexible and extensible way, integrating with many industry-standard tools, processes and technologies. It addresses the challenges faced by organisations with large amounts of sprawling data by providing a centralised platform that handles the management, definition, storage and procurement of the metadata for many different data resources, such as tables, columns, databases, files, dashboards, charts and also for the workflows and processes that resulted in those resources. Relating to the metadata categories described above, OpenMetadata focuses on descriptive and structural but is flexible enough to accommodate any other type. The platform automates the process of metadata discovery and indexing from various sources, such as \glspl{data_lake} (e.g., Trino), databases (e.g., PostgreSQL \cite{postgresqlTech}), business intelligence tools (e.g., PowerBI \cite{powerbiTech}), messaging queues (e.g., Apache Kafka \cite{apacheKafkaTech}), workflow orchestration tools (e.g., Apache Airflow \cite{apacheAirflowTech}). OpenMetadata is designed to be API-first \cite{apiFirstBealieu} so it fully-featured support programmatic access, and provides a user-friendly interface for data consumers, metadata maintainers, and data analysts and scientists to explore data and collaborate.
-
-Apache Ranger \cite{apacheRangerAccessControlModelGuptaMaanak2017,apacheRangerMultiLayerdGuptaMaanak2017} is an open-source security framework for enforcing fine-grained access control policies and auditing access to resources. It was developed by the Apache Foundation to integrate with systems in the Hadoop ecosystem and to tackle the security issues that commonly appear in big data applications. The framework offers a centralised point for security management across a sizeable data-driven organisation where administrators can create data access policies based on user or group permissions or data attributes (also commonly called tags) and comprehensive auditing functionality, empowering the monitoring of resource access and detection of malicious intent. Apache Ranger is widely used in healthcare 
-to secure patient records \cite{rangerHealhcareRangarajan2018}, in telecommunications to protect customer information \cite{rangerTelecomAhmad2019} and in finance to comply with regulatory requirements. The framework easily integrates with other systems in the Hadoop ecosystem, such as HDFS \cite{HDFSBorthakur2008}, HBase \cite{apacheHbaseTech}, Solr \cite{apacheSolrTech} and Kafka, but also with components outside of it, such as Trino and Elasticsearch \cite{elasticsearchTech}.
-
-\section{\label{sec:project_goal} Project Goal}
-
-This project will explore methods of managing access control to metadata and metadata governance solutions. The work is done in the context of using OpenMetadata as the metadata store and Apache Ranger as the centralised security framework, to integrate these two systems.
-
-We will be looking at OpenMetadata and its main functionalities, what systems for access control are already in place, what their shortcomings are and how these can be expanded. This project will also go over Apache Ranger's functionalities, how its plugins operate, and a new plugin for OpenMetadata can be added. Ranger needs to be more well documented, so this report also aims to introduce the many parts of Apache Ranger and guide to integrating services.
-
-Finally, the project will evaluate the quality of the proposed solution, considering how secure the system is and how well it can protect users' privacy, how flexible the approach is and how easily it can be further extended and the performance impact.
-
 \section{Current Solutions}
 
 Open-source metadata catalogues and data discovery systems have gained traction in the previous years, as large companies such as LinkedIn, Lyft and Netflix have internal projects for the public. It is crucial to remember that these projects were created to mould around each organisation's specific workflows and pipelines; thus, these are products of their environments, and the set of features they offer reflects that. Examples of such systems include Amundsen Lyft \cite{amundsenLyftGrover2019}, LinkedIn DatHub \cite{dataHubLinkedinLan2019}, and Netflix Metacat \cite{metacatNetflixMajumdar2018}, which have similar features and functionalities compared to OpenMetadata but, just as similarly, have a lacking approach towards controlling access to metadata.
@@ -64,3 +49,33 @@ Open-source metadata catalogues and data discovery systems have gained traction 
 An outlier in the group of open-source solutions is Apache Atlas \cite{apacheAtlasTech}. Initially incubated by Hortonworks, it is now under the umbrella of the Apache Software Foundation, which, some may argue, positions it at a higher standard of quality compared to the former corporate-owned projects. What makes Apache Atlas an outliner is the organisation backing it but the project's attention to data governance, access control for both data and metadata and privacy of users' data. Apache Atlas is part of the Hadoop ecosystems and natively integrates with Apache Ranger, offering specialised functionality, which we will cover in later parts of the report, Apache Hive, Apache Kafka and others, but is limited in interoperability with systems outside its ecosystems. In this area, the former systems excel.
 
 The realm of data cataloguing systems encompasses a significant portion of commercially available solutions, with Informatica \cite{informaticaTech} being a notable exemplar. However, these solutions are proprietarily licensed, exorbitantly priced, and solely accessible to large-scale organisations. Consequently, assessing their features poses a challenge.
+
+\section{\label{sec:project_goal} Aims and Objectives}
+
+This report aims to examine the current issues of metadata authorisation systems with particular concern towards securing user information and present the design and implementation of a more suitable solution.
+
+The report will explore methods of managing control of access to metadata and metadata governance solutions. The work is done in the context of using OpenMetadata as the metadata store and Apache Ranger as the centralised security framework, with the goal of integrating these two systems.
+
+The report will be looking at OpenMetadata and its main functionalities, what systems for access control are already in place, what their shortcomings are and how these can be expanded. It will review Apache Ranger's functionalities, how its plugins operate, and how a new plugin for OpenMetadata is designed and implemented. Apache Ranger needs to be more well documented, so this report aims to introduce the many parts of Apache Ranger and serve as a general guide for integrating services.
+
+Finally, the project will evaluate the quality of the proposed solution, considering how secure the system is and how well it can protect users' privacy, how flexible the approach is and how easily it can be further extended and the performance impact.
+
+\section{Technologies Used}
+
+OpenMetadata is an open-source platform for metadata management that aims to help data-driven organisations govern their data and metadata in a flexible and extensible way, integrating with many industry-standard tools, processes and technologies. It addresses the challenges faced by organisations with large amounts of sprawling data by providing a centralised platform that handles the management, definition, storage and procurement of the metadata for many different data resources, such as tables, columns, databases, files, dashboards, charts and also for the workflows and processes that resulted in those resources. Relating to the metadata categories described above, OpenMetadata focuses on descriptive and structural but is flexible enough to accommodate any other type. The platform automates the process of metadata discovery and indexing from various sources, such as \glspl{data_lake} (e.g., Trino), databases (e.g., PostgreSQL \cite{postgresqlTech}), business intelligence tools (e.g., PowerBI \cite{powerbiTech}), messaging queues (e.g., Apache Kafka \cite{apacheKafkaTech}), workflow orchestration tools (e.g., Apache Airflow \cite{apacheAirflowTech}). OpenMetadata is designed to be API-first \cite{apiFirstBealieu} so it fully-featured support programmatic access, and provides a user-friendly interface for data consumers, metadata maintainers, and data analysts and scientists to explore data and collaborate.
+
+Apache Ranger \cite{apacheRangerAccessControlModelGuptaMaanak2017,apacheRangerMultiLayerdGuptaMaanak2017} is an open-source security framework for enforcing fine-grained access control policies and auditing access to resources. It was developed by the Apache Foundation to integrate with systems in the Hadoop ecosystem and to tackle the security issues that commonly appear in big data applications. The framework offers a centralised point for security management across a sizeable data-driven organisation where administrators can create data access policies based on user or group permissions or data attributes (also commonly called tags) and comprehensive auditing functionality, empowering the monitoring of resource access and detection of malicious intent. Apache Ranger is widely used in healthcare 
+to secure patient records \cite{rangerHealhcareRangarajan2018}, in telecommunications to protect customer information \cite{rangerTelecomAhmad2019} and in finance to comply with regulatory requirements. The framework easily integrates with other systems in the Hadoop ecosystem, such as HDFS \cite{HDFSBorthakur2008}, HBase \cite{apacheHbaseTech}, Solr \cite{apacheSolrTech} and Kafka, but also with components outside of it, such as Trino and Elasticsearch \cite{elasticsearchTech}.
+
+\section{Summary}
+
+The report is structured in the following chapters:
+
+\begin{itemize}
+    \item \textbf{Chapter 1: \nameref{cha:intro}} presents an overview of the problem, the motivation behind the project, the aims and objectives and a short introduction of the main technologies used;
+    \item \textbf{Chapter 2: \nameref{cha:context}} covers the industry-standard system and technologies that the report builds upon in detail;
+    \item \textbf{Chapter 3: \nameref{cha:design}} overviews the high-level architectural design of the proposed metadata authorisation system and illustrates the flow of data and operation in the access control pipeline;
+    \item \textbf{Chapter 4: \nameref{cha:impl}} presents the steps taken to implement the proposed system and the challenges encountered in the process and the efforts taken to ensure the solution's flexibility and extensibility;
+    \item \textbf{Chapter 5: \nameref{cha:exp}} examines the correctness and performance of the resulting system;
+    \item \textbf{Chapter 6: \nameref{cha:conclusion}} encompasses the reflection, conclusion, and future work.
+\end{itemize}

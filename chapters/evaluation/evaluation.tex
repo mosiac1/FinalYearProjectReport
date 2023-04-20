@@ -1,1 +1,142 @@
-\chapter{Experiments and Evaluation}
+\chapter{\label{cha:exp} Experiments and Evaluation}
+
+This chapter aims to evaluate the correctness, usability and fitness for purpose of the implemented access control system and briefly touch on possible future improvements. The first section details a peer review that was held at the two-thirds point of the project's development, outlining the quality of work, downfalls and open discussion on the system's trajectory. The second part presents experiments done on the finalised product, quantifying suitability with examples of use cases, and carrying out manual behavioural testing.
+
+\section{Peer Evaluation}
+
+On the 21st of February, 2023, I conducted a peer evaluation session with my colleagues from Bloomberg, discussing the project's progress up to that point and the work that would commence. The aim was to collect feedback from senior engineers familiar with the subject matter and understand the users' and organisation's requirements for securing sensitive data.
+
+The peer review was structured into four sections, each corresponding to an objective of the project; all four scopes were comprised of a short introduction of the issue at hand and the proposed solution, a status report of the current progress and challenges encountered and finally, an open discussion on the quality of the solution and possible downfalls and improvements. 
+
+\subsection{The OpenMetadata plugin for Apache Ranger}
+
+This section relates to Section \ref{sec:changes_to_apache_ranger}.
+
+The OpenMetadata plugin for Apache Ranger was fully implemented before the feedback session was conducted. It was commonly agreed that the feature providing autocompletes for resource values in the Apache Ranger user interface had low priority as it was a quality-of-life improvement for policy administrators and not part of the access control framework.
+
+Most of the challenges encountered in this design and development process were caused by the complexity of the Apache Ranger system, the lack of detailed and centralised documentation and the difficulty of deploying all components locally for testing purposes. Based on these challenges, it was suggested to document in detail all the knowledge acquired about Apache Ranger, the steps required to create additional plugins and the procedures used for development and validation so these may be used later to maintain the apparatus or to extend it further. These challenges motivated the compilation of information presented in Section \ref{sec:tech_background_apache_ranger}.
+
+\subsection{The OpenMetadata Service Definition}
+
+This section relates to Section \ref{sec:service_def}.
+
+The final version of the OpenMetadata service definition was presented in the peer review session; the feedback was positive, with the joint agreement that the service definition structures OpenMetadata's entities correctly and it enables very precise control of access to metadata.
+
+It was proposed to create a new resource type for columns of tables. Table columns are not first-class entities in OpenMetadata, but rather part of table entities; thus, supporting access controls for columns would incur considerable modifications to core OpenMetadata functionality and its included authorisation system, which could not be backwards-compatible. It was difficult to find practical situations in which metadata owners would need more restrictive access to a column compared to its parent table or cases when controlling access to a column was crucial to protecting the privacy of users whose personal information is stored. An additional resource type would incur a very high maintenance cost for policies, as an organisation with hundreds of tables owns thousands of columns. In conclusion, it was decided that this idea would not be part of the current project but should be considered for future work.
+
+\subsection{Ranger Authorizer Plugin in OpenMetadata}
+
+This section relates to Section \ref{sec:using_apache_ranger_for_authorisation}.
+
+The Ranger Authorizer plugin in OpenMetadata presented in the feedback session was not complete; the functionalities which it did support were access controls for table entities (and, implicitly, for database service, database and database schema entities), aggregation of Apache Ranger \acrshort{acl} to OpenMetadata Resource Permissions and filtering of entities in listing operations.
+
+Multiple demonstrations of the access control mechanism for tables were and filtering of entities were presented, with increasingly complex policies applied. The feedback was positive.
+
+Concerns were raised with the filtering from listing operations of entities the user is not authorised to view. The primary issue was that it inhibited the discovery of metadata; well-intentioned users could find metadata about a resource that is relevant to their work but not accessible; access could be requested and granted by security managing bodies in the organisation. This workflow of finding a resource, either by chance, from a colleague or documentation, and then requesting access to it is very common for data, so it should be expected to translate similarly to metadata.
+
+These concerns generated the idea of creating a new access type, specifically \mintinline[breaklines, breakbefore=S]{java}{ViewSearch}. This access type would control whether an entity appears in listings. For an entity that the user has \mintinline{text}{ViewSearch} access to but not \mintinline{text}{ViewAll} access, only minimal information would be available, consisting of the name, fully qualified name, ID and owner for example. The user interface should communicate to the user the lack of access to a resource by outlining the box containing the information about that resource in a distinctive colour (e.g., red) by adding a clear label and details about requesting access.
+
+Finally, it was agreed that this enhancement would not be part of the current project but would take high priority as a future extension to the system.
+
+\subsection{Filtering of Results from the Search Engine}
+
+This section relates to Section \ref{sec:masking_results_from_search}.
+
+The issue of filtering results from the Search Engine was discussed at length during the feedback session.
+
+The main concerns regarding this topic were the effort of overhauling the search functionality, including the work required to coordinate with the open-source community and their vision of OpenMetadata, and the negative impact on metadata discovery. A similar approach to the one described above - using a specialised access type for controlling the appearance of entities in search results - was proposed for the second issue. There was no consensus on the direction to be taken to solve the first problem as it required considerable research and scoping before any planning could commence.
+
+The mechanism for signalling to users of the search functionality in the OpenMetadata user interface that their access to a resource is denied was proposed as a temporary remediation of these issues. This feature was implemented as part of the project and is exemplified by Figure \ref{fig:openmetadata_sample_data_explore_denied}.
+
+\subsection{Key Takeaways}
+
+During the peer review session, the proposal of researching the usage of the tags of OpenMetadata entities in the mechanism for deciding access control was discussed. This is discussed further in the Future Work section.
+
+The overall feedback from the session was positive. The work done to that point was considered on track with the timeline set out during the planning phase and a sound proof of concept, indicative that the finished project would meet its deliverables by the deadline. The enhancements discussed in the review aligned with the aim and vision of the metadata access control system and were all filed as potential future work that requires additional scoping and planning and is, thus, not suitable to be added to the current set of goals.
+
+The peer review was an integral part of the development process of the system, ensuring the work done up to the middle point of the timeline was heading in the right direction to meet deliverables and serving as an opportunity to take into account challenges that could not be expected, slightly adjusting the trajectory of the project.
+
+
+\section{Experiments with the Access Control System}
+
+This section covers experiments with the OpenMetadata access control system using Apache Ranger. The aim is to present the mechanism's capabilities and evaluate the solution's quality based on tangible cases.
+
+The setup for the experiments is built upon a new OpenMetadata service, populated with the sample data provided in the project's source code and two additional users, Alice and Bob, and a new Apache Ranger Security Admin Service instance, where an OpenMetadata service was created and automatically populated with the default policies. User Alice is added to the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-admin} role, and Bob is added to the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role. The experiments are structured as follows: the conditions are presented, including the OpenMetadata entities used and the relevant Apache Ranger policies, the expected behaviour of the system under test is stated, and the actual results are verified.
+
+\subsection{Experiment 1 - Default Policies}
+
+This experiment aims to validate the access control rules imposed by the default policies on all resources. It is expected that both Alice and Bob should have permission to list all tables and access the metadata of any table for viewing; Alice should additionally be able to edit the metadata of any table.
+
+The operation listing the tables under the \mintinline{text}{sample_data.ecommerce_db.shopify} database schema provides the same results for both users, as shown in Figure \ref{fig:exp_1_talbes}. Both users can view the complete metadata of any table in the listing. Alice can edit any table's metadata (e.g., owner, tags, description), illustrated in the user interface by the pen icons presented in Figure \ref{fig:exp_1_alice_table}. Bob cannot edit the metadata of any tables reflected in the user interface by removing the edit buttons, shown in Figure \ref{fig:exp_1_bob_table}. 
+
+A request using Bob's credentials sent directly to the Metadata Service's API, bypassing the user interface, to edit the metadata of tables is denied with a \mintinline{text}{403 Forbidden} status code. The resource permission of Bob on the table, requested from the \mintinline[breaklines, breakbefore=/]{java}{/api/v1/permissions} API, shown in Listing \ref{listing:exp_1_perms}, match values expected given the Apache Ranger policies.
+
+\begin{listing}
+
+\begin{minted}[breaklines,
+    linenos,
+    fontsize=\footnotesize,
+    frame=single,
+]{json}
+{
+    "resource": "table",
+    "permissions": [
+        { "operation": "ViewAll", "access": "allow" },
+        { "operation": "EditAll", "access": "deny" },
+        { "operation": "Delete", "access": "deny" },
+        { "operation": "Create", "access": "deny" },
+    ]
+}
+\end{minted}
+
+\caption{Permissions of user Bob on table resource \mintinline{text}{sample_data.ecommerce_db.shopify} under initial conditions.}
+
+\label{listing:exp_1_perms}
+
+\end{listing}
+
+\subsection{Experiment 2 - Resource Specificity}
+
+This experiment aims to verify the functionality of Apache Ranger policies that apply only to specific resources and the behaviour of deny conditions.
+
+For this experiment, the initial conditions are updated, adding a new policy to Apache Ranger that allows Bob to edit the metadata of the \mintinline[breaklines, breakbefore=.]{java}{sample_data.ecommerce_db.shopify."dim.api/client"} table and blocks all access by Alice to that table; all other policies maintain the same state as before. It is expected that Bob should be able to edit the specified table and Alice should not be able to view it. 
+
+The Apache Ranger policy named \mintinline[breaklines, breakbefore=./]{java}{Table sample_data.ecommerce_db.shopify."dim.api/client"} is created with resource values, allows conditions and denies conditions as shown in Figure \ref{fig:exp_2_ranger_poli}. 
+
+Accessing the table metadata as Bob now allows editing of fields, similar to Figure \ref{fig:exp_1_alice_table}. Accessing the table metadata as Alice results in an access denied screen, shown in Figure \ref{fig:exp_2_alice_table}. Access control results are verified to be the same as with the system's initial state for tables outside the table under test. Repeating these operations through the OpenMetadata API produces the same results.
+
+\subsection{Experiment 3 - Filtering of Entities from Listing}
+
+This experiment aims to confirm the filtering of entities in listing operations and Apache Ranger policies that exclude resource value patterns from their matching.
+
+Testing is performed using messaging service and topic entities. The initial conditions are modified in Apache Ranger by removing, from the \mintinline[breaklines, breakbefore=-\_,]{java}{all - messaging_service, topic} policy, the rule granting the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} role \mintinline{text}{ViewAll} and \mintinline{text}{EditDescription} permission, and by creating a new policy named \mintinline{java}{customer topics in sample_kafka} which grants the consumer role \mintinline{text}{ViewAll} permission on topics that do not contain the words \mintinline{java}{customer} or \mintinline{java}{address} in their name and are part of the \mintinline{java}{sample_kafka} messaging service. The policy definition is shown in Figure \ref{fig:exp_3_ranger}. It is expected that Bob should not be able to view these topics in the listing.
+
+Accessing the \mintinline{java}{sample_kafka} messaging service as Alice returns all its topics, as shown in Figure \ref{fig:exp_3_kafka_alice}; accessing the same resource as Bob displays only a subset of its topics, following the exclusion pattern set in the Apache Ranger policy. Attempting to directly access one of the topics that do not appear in the listing as Bob results in an accesses denied screen. Repeating these operations through the OpenMetadata API produces the same results.
+
+\subsection{Experiment 4 - Recursive Entity Types}
+
+This experiment aims to validate the behaviour of Apache Ranger policies applied to recursive resources, precisely glossary terms.
+
+Glossary \mintinline{java}{t_glossary} and glossary terms following the structure presented in Listing \ref{listing:exp_4_t_glossary} are created in OpenMetadata. A new Apache Ranger policy, \mintinline[breaklines]{java}{glossary_terms in t_glossary}, is created, granting the \mintinline[breaklines, breakbefore=-]{java}{openmetadata-localhost-data-consumer} roles recursive permission to view, edit and create the glossary term \mintinline[breaklines, breakbefore=.\_]{java}{t_glossary.g_term_1}. Recursive access implies permission to extend to the glossary term's descendants.
+
+Bob is expected to have additional edit and create permissions for all glossary terms with \mintinline{java}{g_term_1} as an ancestor. Still, there should be no change relating to access control results for other entities. 
+
+Bob has access to editing glossary terms \mintinline{java}{g_term_1_1} and \mintinline{java}{g_term_1_1_1} as these share the common ancestor \mintinline{java}{g_term_1}; Bob is allowed to create new entities in this hierarchy. These findings are illustrated in Figure \ref{fig:exp_4_glos_1}. The data consumer is not permitted to edit glossary term \mintinline{java}{g_term_2} and \mintinline{java}{g_term_2_1} and is not allowed to create new entities in this hierarchy, as these do not have the required parent, as shown in Figure \ref{fig:exp_4_glos_2}. Repeating these operations through the OpenMetadata API produces the same results.
+
+\begin{listing}
+
+    \renewcommand\DTstyle{\rmfamily}
+    \dirtree{%
+    .1 t\_glossary.
+    .2 g\_term\_1.
+    .3 g\_term\_1\_1.
+    .4 g\_term\_1\_1\_1.
+    .2 g\_term\_2.
+    .3 g\_term\_2\_1.
+    }
+    
+    \caption{Tree representation of the \mintinline{java}{t_glossary} glossary used for experiments.}
+    
+    \label{listing:exp_4_t_glossary}
+    
+\end{listing}
